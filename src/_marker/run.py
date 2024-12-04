@@ -8,15 +8,15 @@ from marker.output import text_from_rendered
 from marker.converters.pdf import PdfConverter
 
 def func(queue, args):
+    converter = PdfConverter(
+        artifact_dict=create_model_dict(),
+    )
+
     while True:
         src = queue.get()
         logging.warning(src)
 
-        converter = PdfConverter(
-            artifact_dict=create_model_dict(),
-        )
-        rendered = converter(src)
-        (text, *_) = text_from_rendered(rendered)
+        (text, *_) = text_from_rendered(converter(src))
 
         dst = args.destination.joinpath(src.relative_to(args.source))
         dst.parent.mkdir(parents=True, exist_ok=True)
