@@ -12,12 +12,16 @@ if __name__ == '__main__':
     arguments.add_argument('--destination', type=Path)
     args = arguments.parse_args()
 
-    logging.warning(args.source)
-
     artifact_dict = create_model_dict()
     converter = PdfConverter(artifact_dict=artifact_dict)
-    (text, *_) = text_from_rendered(converter(str(args.source)))
 
-    dst = args.destination.joinpath(args.source.relative_to(args.source))
-    dst.parent.mkdir(parents=True, exist_ok=True)
-    dst.write_text(text)
+    for i in args.source.rglob('*.pdf'):
+        dst = (args
+               .destination
+               .joinpath(i.relative_to(args.source))
+               .with_suffix('.md'))
+        dst.parent.mkdir(parents=True, exist_ok=True)
+
+        logging.warning('%s -> %s', i, dst)
+        (text, *_) = text_from_rendered(converter(str(i)))
+        dst.write_text(text)
