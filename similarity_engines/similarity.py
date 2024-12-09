@@ -11,7 +11,8 @@ def compare_files_take_5(gold_file_path, predicted_file_path, threshold=0.8):
 
         differences = list(ndiff(gold_content, predicted_content))
 
-        added_text = "".join([diff[2:] for diff in differences if diff.startswith("+")])
+        added_text = "".join([diff[2:]
+                             for diff in differences if diff.startswith("+")])
         deleted_text = "".join(
             [diff[2:] for diff in differences if diff.startswith("-")]
         )
