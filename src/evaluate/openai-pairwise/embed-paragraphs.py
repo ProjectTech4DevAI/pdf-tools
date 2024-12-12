@@ -2,21 +2,17 @@ import sys
 import json
 import logging
 import itertools as it
-from typing import Union
 from argparse import ArgumentParser
-from dataclasses import dataclass, asdict, replace
+from dataclasses import asdict, replace
 from multiprocessing import Pool, Queue
 
 from openai import OpenAI
 
-#
-#
-#
-@dataclass(frozen=True)
-class Paragraph:
-    order: int
-    data: Union[str, list[float]]
+from utils import Paragraph
 
+#
+#
+#
 class Blocker(list):
     def flush(self):
         data = ' '.join(it.chain.from_iterable(x.split() for x in self))
