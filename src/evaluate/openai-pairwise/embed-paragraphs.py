@@ -42,7 +42,7 @@ def psplit(fp):
         line = i.strip()
         if line:
             blocks.append(line)
-        else:
+        elif blocks:
             yield blocks.flush()
     if blocks:
         yield blocks.flush()
