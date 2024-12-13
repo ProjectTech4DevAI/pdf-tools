@@ -1,1 +1,4 @@
 marker-pdf
+openai
+scikit-learn
+scipy
