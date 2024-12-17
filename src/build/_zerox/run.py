@@ -1,51 +1,50 @@
-from pyzerox import zerox
 import os
 import asyncio
+import logging
+from pathlib import Path
+from argparse import ArgumentParser
+from multiprocessing import Pool, JoinableQueue
 
-# Model Setup (Use only Vision Models) Refer: https://docs.litellm.ai/docs/providers
-kwargs = {}  # Placeholder for additional model kwargs
-custom_system_prompt = None  # System prompt to use for the vision model
+from pyzerox import zerox
 
-model = "gpt-4o"  # OpenAI model
-# Your API key
-os.environ["OPENAI_API_KEY"] = ""
+def func(queue, args):
+    while True:
+        src = queue.get()
 
-# Define the main async entrypoint
+        source = src.relative_to(args.source)
+        destination = (args
+                       .destination
+                       .joinpath(source)
+                       .with_suffix('.md'))
+        if destination.exists() and not args.overwrite:
+            logging.error('%s exists (skipping)', source)
+        else:
+            destination.parent.mkdir(parents=True, exist_ok=True)
+            logging.warning('%s -> %s', source, destination)
+            asyncio.run(zerox(
+                file_path=str(src),
+                model=args.model,
+                output_dir=str(destination.parent),
+            ))
 
+        queue.task_done()
 
-async def main():
-    # Specify the folder path
-    folder_path = "FIR pdf files"
-    # Output base directory
-    output_base_dir = "./output/"
+if __name__ == '__main__':
+    arguments = ArgumentParser()
+    arguments.add_argument('--model', default='gpt-4o-mini')
+    arguments.add_argument('--source', type=Path)
+    arguments.add_argument('--destination', type=Path)
+    arguments.add_argument('--overwrite', action='store_true')
+    arguments.add_argument('--workers', type=int)
+    args = arguments.parse_args()
 
-    # Walk through the folder and process each .pdf file
-    for root, dirs, files in os.walk(folder_path):
-        for file_name in files:
-            if file_name.endswith(".pdf"):
-                file_path = os.path.join(root, file_name)
-                print(f"Processing file: {file_path}")
+    queue = JoinableQueue()
+    initargs = (
+        queue,
+        args,
+    )
 
-                # Create an output directory for each file's results
-                output_dir = os.path.join(
-                    output_base_dir, os.path.relpath(root, folder_path)
-                )
-
-                # Ensure output directory exists
-                os.makedirs(output_dir, exist_ok=True)
-
-                # Process the PDF file with zerox
-                select_pages = None  # None for all pages
-                await zerox(
-                    file_path=file_path,
-                    model=model,
-                    output_dir=output_dir,
-                    custom_system_prompt=custom_system_prompt,
-                    select_pages=select_pages,
-                    **kwargs,
-                )
-                print(f"File processed and saved to: {output_dir}")
-
-
-# Run the main function
-asyncio.run(main())
+    with Pool(args.workers, func, initargs):
+        for i in args.source.rglob('*.pdf'):
+            queue.put(i)
+        queue.join()
