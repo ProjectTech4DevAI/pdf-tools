@@ -8,7 +8,7 @@ custom_system_prompt = None  # System prompt to use for the vision model
 
 model = "gpt-4o"  # OpenAI model
 # Your API key
-os.environ["OPENAI_API_KEY"] = ("")
+os.environ["OPENAI_API_KEY"] = ""
 
 # Define the main async entrypoint
 
