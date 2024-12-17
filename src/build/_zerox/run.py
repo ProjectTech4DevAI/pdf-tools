@@ -1,33 +1,45 @@
-import os
-import asyncio
 import logging
 from pathlib import Path
+from asyncio import Runner
 from argparse import ArgumentParser
-from multiprocessing import Pool, JoinableQueue
+from dataclasses import dataclass
+from multiprocessing import Pool
 
 from pyzerox import zerox
 
-def func(queue, args):
-    while True:
-        src = queue.get()
+@dataclass(frozen=True)
+class Job:
+    src: Path
+    dst: Path
+    model: str
 
-        source = src.relative_to(args.source)
-        destination = (args
-                       .destination
-                       .joinpath(source)
-                       .with_suffix('.md'))
-        if destination.exists() and not args.overwrite:
-            logging.error('%s exists (skipping)', source)
-        else:
-            destination.parent.mkdir(parents=True, exist_ok=True)
-            logging.warning('%s -> %s', source, destination)
-            asyncio.run(zerox(
-                file_path=str(src),
-                model=args.model,
-                output_dir=str(destination.parent),
+    def __str__(self):
+        return f'{self.src} -> {self.dst}'
+
+def func(job):
+    with Runner() as runner:
+        output_dir = job.dst.parent
+        output_dir.mkdir(parents=True, exist_ok=True)
+        try:
+            runner.run(zerox(
+                file_path=str(job.src),
+                model=job.model,
+                output_dir=str(output_dir),
             ))
+            logging.warning(job)
+        except Exception as err:
+            job.dst.unlink(missing_ok=True)
+            logging.error('%s: %s', type(err), job)
 
-        queue.task_done()
+def jobs(args):
+    for i in args.source.rglob('*.pdf'):
+        source = i.relative_to(args.source)
+        dst = (args
+               .destination
+               .joinpath(source)
+               .with_suffix('.md'))
+        if not dst.exists() or args.overwrite:
+            yield Job(i, dst, args.model)
 
 if __name__ == '__main__':
     arguments = ArgumentParser()
@@ -38,13 +50,6 @@ if __name__ == '__main__':
     arguments.add_argument('--workers', type=int)
     args = arguments.parse_args()
 
-    queue = JoinableQueue()
-    initargs = (
-        queue,
-        args,
-    )
-
-    with Pool(args.workers, func, initargs):
-        for i in args.source.rglob('*.pdf'):
-            queue.put(i)
-        queue.join()
+    with Pool(args.workers) as pool:
+        for _ in pool.imap_unordered(func, jobs(args)):
+            pass
