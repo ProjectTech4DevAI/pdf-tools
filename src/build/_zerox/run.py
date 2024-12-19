@@ -18,18 +18,18 @@ class Job:
 
 def func(job):
     with Runner() as runner:
-        output_dir = job.dst.parent
-        output_dir.mkdir(parents=True, exist_ok=True)
         try:
-            runner.run(zerox(
+            result = runner.run(zerox(
                 file_path=str(job.src),
                 model=job.model,
-                output_dir=str(output_dir),
             ))
             logging.warning(job)
         except Exception as err:
-            job.dst.unlink(missing_ok=True)
             logging.error('%s: %s', type(err), job)
+            return
+
+    job.dst.parent.mkdir(parents=True, exist_ok=True)
+    job.dst.write_text('\n\n'.join(x.content for x in result.pages))
 
 def jobs(args):
     for i in args.source.rglob('*.pdf'):
