@@ -9,7 +9,6 @@ and add the file to a destionation with the same relative path:
 $> python run.py \
     --source /path/to/pdfs \
     --destination /path/to/output/directory
-done
 ```
 
 This should be run on a GPU; Amazon EC2 `g4dn.4xlarge` or
