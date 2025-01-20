@@ -43,7 +43,7 @@ def jobs(args):
 
 if __name__ == '__main__':
     arguments = ArgumentParser()
-    arguments.add_argument('--model', default='gpt-4o-mini')
+    arguments.add_argument('--model', default='gpt-4o')
     arguments.add_argument('--source', type=Path)
     arguments.add_argument('--destination', type=Path)
     arguments.add_argument('--overwrite', action='store_true')
