@@ -1,4 +1,5 @@
 import logging
+import functools as ft
 from pathlib import Path
 from asyncio import Runner
 from argparse import ArgumentParser
@@ -7,6 +8,9 @@ from multiprocessing import Pool
 
 from pyzerox import zerox
 
+#
+#
+#
 @dataclass(frozen=True)
 class Job:
     src: Path
@@ -16,23 +20,44 @@ class Job:
     def __str__(self):
         return f'{self.src} -> {self.dst}'
 
+#
+#
+#
+@ft.singledispatch
+def extract(source, model):
+    raise TypeError(type(source))
+
+@extract.register
+def _(file_path: str, model):
+    with Runner() as runner:
+        result = runner.run(zerox(
+            file_path=file_path,
+            model=model,
+        ))
+    output = '\n\n'.join(x.content for x in result.pages)
+    if not output:
+        raise ValueError('Empty output')
+
+    return output
+
+@extract.register
+def _(file_path: Path, model):
+    return extract(str(file_path), model)
+
+#
+#
+#
 def func(job):
     logging.warning(job.src)
+    try:
+        result = extract(job.src, job.model)
+    except Exception as err:
+        logging.error('%s: %s', type(err), job.dst)
+        return
 
-    with Runner() as runner:
-        try:
-            result = runner.run(zerox(
-                file_path=str(job.src),
-                model=job.model,
-            ))
-        except Exception as err:
-            logging.error('%s: %s', type(err), job.dst)
-            result = None
-
-    if result is not None:
-        logging.critical(job.dst)
-        job.dst.parent.mkdir(parents=True, exist_ok=True)
-        job.dst.write_text('\n\n'.join(x.content for x in result.pages))
+    logging.critical(job.dst)
+    job.dst.parent.mkdir(parents=True, exist_ok=True)
+    job.dst.write_text(result)
 
 def jobs(args):
     for i in args.source.rglob('*.pdf'):
@@ -44,6 +69,9 @@ def jobs(args):
         if not dst.exists() or args.overwrite:
             yield Job(i, dst, args.model)
 
+#
+#
+#
 if __name__ == '__main__':
     arguments = ArgumentParser()
     arguments.add_argument('--model', default='gpt-4o')
