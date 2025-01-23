@@ -17,19 +17,22 @@ class Job:
         return f'{self.src} -> {self.dst}'
 
 def func(job):
+    logging.warning(job.src)
+
     with Runner() as runner:
         try:
             result = runner.run(zerox(
                 file_path=str(job.src),
                 model=job.model,
             ))
-            logging.warning(job)
         except Exception as err:
-            logging.error('%s: %s', type(err), job)
-            return
+            logging.error('%s: %s', type(err), job.dst)
+            result = None
 
-    job.dst.parent.mkdir(parents=True, exist_ok=True)
-    job.dst.write_text('\n\n'.join(x.content for x in result.pages))
+    if result is not None:
+        logging.critical(job.dst)
+        job.dst.parent.mkdir(parents=True, exist_ok=True)
+        job.dst.write_text('\n\n'.join(x.content for x in result.pages))
 
 def jobs(args):
     for i in args.source.rglob('*.pdf'):
