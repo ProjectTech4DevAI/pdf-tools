@@ -16,8 +16,8 @@ while getopts 's:d:b:i:h' option; do
     case $option in
         s) _pdfs="$OPTARG" ;;
         d) _markdowns=$OPTARG ;;
-	b) _bucket=$OPTARG ;;
-	i) _instance=$OPTARG ;;
+        b) _bucket=$OPTARG ;;
+        i) _instance=$OPTARG ;;
         h)
             cat <<EOF
 Usage: $0
@@ -70,40 +70,40 @@ for i in ${_workflows[@]}; do
     # files are assumed not to exist for a reason.
     rm --force $_commit_lock
     find $dst -name '*.md' \
-	| while read; do
-	md=$(realpath --relative-to=$dst "$REPLY")
-	src="$_pdfs/$md"
-	src=$(sed -e's/\.md/.pdf/' <<< "$src")
-	if [ ! -f "$src" ]; then
-	    (cd $dst && git rm "$md")
-	    touch $_commit_lock
-	fi
+        | while read; do
+        md=$(realpath --relative-to=$dst "$REPLY")
+        src="$_pdfs/$md"
+        src=$(sed -e's/\.md/.pdf/' <<< "$src")
+        if [ ! -f "$src" ]; then
+            (cd $dst && git rm "$md")
+            touch $_commit_lock
+        fi
     done
     if [ -e $_commit_lock ]; then
-	(cd $_markdowns \
-	    && git commit \
-		   --all \
-		   --message="Document removal using $_automator:$model"
-	)
+        (cd $_markdowns \
+            && git commit \
+                   --all \
+                   --message="Document removal using $_automator:$model"
+        )
     fi
 
     # Pick the Markdown conversion process and run it
     params="--source $_pdfs --destination $dst"
     case $model in
-	zerox) python $_scripts/_zerox/run.py $params --model gpt-4o ;;
-	marker) python $_scripts/_marker/run.py $params ;;
-	*)
-	    echo Unrecognized method \"$_method\"
-	    exit 1
-	    ;;
+        zerox) python $_scripts/_zerox/run.py $params --model gpt-4o ;;
+        marker) python $_scripts/_marker/run.py $params ;;
+        *)
+            echo Unrecognized method \"$_method\"
+            exit 1
+            ;;
     esac
 
     # Add the files to Git
     (cd $_markdowns \
-	 && git add $i \
-	 && git commit \
-		--all \
-		--message="Document addition using $_automator:$model"
+         && git add $i \
+         && git commit \
+                --all \
+                --message="Document addition using $_automator:$model"
     )
 done
 
