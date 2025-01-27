@@ -33,11 +33,28 @@ if [ ! $_pdfs ]; then
     _pdfs=`mktemp --directory`
 fi
 
-aws s3 sync $_bucket $_pdfs/ --no-progress --delete
+#
+#
+#
+aws s3 sync $_bucket $_pdfs/ --no-progress --delete || exit 1
+
+#
+#
+#
+(cd $_markdowns \
+     && git switch main \
+     && git checkout -b $_automator/`date +%Y%m%d-%H%M%S`
+) || exit 1
+
+#
+#
+#
 for i in ${_workflows[@]}; do
     dst=$_markdowns/$i
+    mkdir --parents $dst
     model=$(dirname $i)
 
+    rm --force $_commit_lock
     find $dst -name '*.md' \
 	| while read; do
 	md=$(realpath --relative-to=$dst "$REPLY")
@@ -45,13 +62,32 @@ for i in ${_workflows[@]}; do
 	src=$(sed -e's/\.md/.pdf/' <<< "$src")
 	if [ ! -f "$src" ]; then
 	    (cd $dst && git rm "$md")
+	    touch $_commit_lock
 	fi
     done
-    $ROOT/bin/run.sh -s $_pdfs -d $_markdowns -m $model
+    if [ -e $_commit_lock ]; then
+	(cd $_markdowns \
+	    && git commit \
+		   --all \
+		   --message="Document removal using $_automator:$model"
+	)
+    fi
+
+    params="--source $_pdfs --destination $dst"
+    case $model in
+	zerox) python $_scripts/_zerox/run.py $params --model gpt-4o ;;
+	marker) python $_scripts/_marker/run.py $params ;;
+	*)
+	    echo Unrecognized method \"$_method\"
+	    exit 1
+	    ;;
+    esac
 
     (cd $_markdowns \
 	 && git add $i \
-	 && git commit -m "Document add/removal using $model"
+	 && git commit \
+		--all \
+		--message="Document addition using $_automator:$model"
     )
 done
 
