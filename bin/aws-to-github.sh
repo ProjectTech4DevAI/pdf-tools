@@ -2,8 +2,7 @@
 
 ROOT=`git rev-parse --show-toplevel`
 
-export OPENAI_API_KEY=`cat $ROOT/open-ai.key`
-source $ROOT/venv/bin/activate
+source $ROOT/venv/bin/activate || exit 1
 
 _scripts=$ROOT/src/build
 _workflows=(
