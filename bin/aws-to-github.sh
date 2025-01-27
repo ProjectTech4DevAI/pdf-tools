@@ -8,8 +8,10 @@ source $ROOT/venv/bin/activate
 _scripts=$ROOT/src/build
 _workflows=(
     zerox/openai_gpt-4o
-    # marker/default
+    # marker/default # run on g4dn.4xlarge
 )
+_automator=`basename $ROOT`
+_commit_lock=`mktemp --dry-run XXX`
 
 while getopts 's:d:b:i:h' option; do
     case $option in
