@@ -21,9 +21,14 @@ while getopts 's:d:b:i:h' option; do
         h)
             cat <<EOF
 Usage: $0
- -s Local source directory containing PDFs (optional)
- -d Github repository for Markdown destination
- -b AWS bucket containing PDFs (must have s3:// prefix)
+ -d Github repository that will act as a destination for
+    generated Markdown's.
+ -b AWS bucket containing PDFs (must have s3:// prefix).
+ -s [optional] Local source directory containing PDFs. If
+    not specified all files from S3 will be downloaded.
+ -i [optional] The E2 instance on which this script is
+    being run. Specifying this option will shut the
+    instance down once this script is complete.
 EOF
             exit 0
             ;;
@@ -39,12 +44,13 @@ if [ ! $_pdfs ]; then
 fi
 
 #
-#
+# Download files from S3 to the local storage location
 #
 aws s3 sync $_bucket $_pdfs/ --no-progress --delete || exit 1
 
 #
-#
+# The destination is assumed to be a Github repository. This prep's
+# the repository for the forthcoming Markdown output.
 #
 (cd $_markdowns \
      && git switch main \
@@ -52,13 +58,16 @@ aws s3 sync $_bucket $_pdfs/ --no-progress --delete || exit 1
 ) || exit 1
 
 #
-#
+# Generate the Markdown's!
 #
 for i in ${_workflows[@]}; do
     dst=$_markdowns/$i
     mkdir --parents $dst
     model=$(dirname $i)
 
+    # Remove files that exist in the destination (Github) but not
+    # S3. The destination will become a mirror of S3: non existent S3
+    # files are assumed not to exist for a reason.
     rm --force $_commit_lock
     find $dst -name '*.md' \
 	| while read; do
@@ -78,6 +87,7 @@ for i in ${_workflows[@]}; do
 	)
     fi
 
+    # Pick the Markdown conversion process and run it
     params="--source $_pdfs --destination $dst"
     case $model in
 	zerox) python $_scripts/_zerox/run.py $params --model gpt-4o ;;
@@ -88,6 +98,7 @@ for i in ${_workflows[@]}; do
 	    ;;
     esac
 
+    # Add the files to Git
     (cd $_markdowns \
 	 && git add $i \
 	 && git commit \
@@ -96,6 +107,9 @@ for i in ${_workflows[@]}; do
     )
 done
 
+#
+# If an EC2 instance was specified, shut it down.
+#
 if [ $_instance ]; then
     aws ec2 stop-instances --instance-id $_instance
 fi
