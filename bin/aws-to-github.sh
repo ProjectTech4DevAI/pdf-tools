@@ -7,11 +7,12 @@ _workflows=(
     # marker/default
 )
 
-while getopts 's:d:b:h' option; do
+while getopts 's:d:b:i:h' option; do
     case $option in
         s) _pdfs="$OPTARG" ;;
         d) _markdowns=$OPTARG ;;
 	b) _bucket=$OPTARG ;;
+	i) _instance=$OPTARG ;;
         h)
             cat <<EOF
 Usage: $0
@@ -53,3 +54,7 @@ for i in ${_workflows[@]}; do
 	 && git commit -m "Document add/removal using $model"
     )
 done
+
+if [ $_instance ]; then
+    aws ec2 stop-instances --instance-id $_instance
+fi
