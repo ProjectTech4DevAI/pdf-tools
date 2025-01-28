@@ -10,7 +10,6 @@ _workflows=(
     # marker/default # run on g4dn.4xlarge
 )
 _automator=`basename $ROOT`
-_commit_lock=`mktemp --dry-run XXX`
 
 while getopts 's:d:b:i:h' option; do
     case $option in
@@ -68,7 +67,7 @@ for i in ${_workflows[@]}; do
     # Remove files that exist in the destination (Github) but not
     # S3. The destination will become a mirror of S3: non existent S3
     # files are assumed not to exist for a reason.
-    rm --force $_commit_lock
+    c_lock=`mktemp`
     find $dst -name '*.md' \
         | while read; do
         md=$(realpath --relative-to=$dst "$REPLY")
@@ -76,16 +75,17 @@ for i in ${_workflows[@]}; do
         src=$(sed -e's/\.md/\.pdf/' <<< "$src")
         if [ ! -f "$src" ]; then
             (cd $dst && git rm "$md")
-            touch $_commit_lock
+            echo $REPLY >> $c_lock
         fi
     done
-    if [ -e $_commit_lock ]; then
+    if [ `stat --printf=%s $c_lock` -gt 0 ]; then
         (cd $_markdowns \
             && git commit \
                    --all \
                    --message="Document removal using $_automator:$model"
         )
     fi
+    rm $c_lock
 
     # Pick the Markdown conversion process and run it
     params="--source $_pdfs --destination $dst"
