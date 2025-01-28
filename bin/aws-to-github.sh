@@ -73,7 +73,7 @@ for i in ${_workflows[@]}; do
         | while read; do
         md=$(realpath --relative-to=$dst "$REPLY")
         src="$_pdfs/$md"
-        src=$(sed -e's/\.md/.pdf/' <<< "$src")
+        src=$(sed -e's/\.md/\.pdf/' <<< "$src")
         if [ ! -f "$src" ]; then
             (cd $dst && git rm "$md")
             touch $_commit_lock
