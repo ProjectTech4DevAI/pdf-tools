@@ -1,2 +1,5 @@
 marker-pdf
+openai
 py-zerox
+scikit-learn
+scipy
